@@ -44,6 +44,9 @@ function decryptApiKey(encryptedApiKey: string, userId: string) {
   }
 }
 
+// 動的レンダリングを強制するための設定
+export const dynamic = 'force-dynamic';
+
 // APIキー取得
 export async function GET() {
   try {

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '../../../../lib/auth';
 import { kv } from '@vercel/kv';
 import OpenAI from 'openai';
@@ -17,6 +17,9 @@ function decryptApiKey(encryptedApiKey: string, userId: string) {
     return '';
   }
 }
+
+// 動的レンダリングを強制するための設定
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {

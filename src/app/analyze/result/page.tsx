@@ -1,10 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AnalysisResultPage() {
+// 結果ローディングコンポーネント
+function ResultLoader() {
+  return (
+    <div className="page-content">
+      <div className="container py-5 text-center">
+        <div className="spinner" style={{ width: '3rem', height: '3rem', borderWidth: '0.3rem' }}></div>
+        <p className="mt-3">分析結果を読み込んでいます...</p>
+      </div>
+    </div>
+  );
+}
+
+// 結果表示の実際のコンポーネント
+function AnalysisResultContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const sessionId = searchParams.get('session_id');
@@ -159,5 +172,14 @@ export default function AnalysisResultPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// メインページコンポーネント
+export default function AnalysisResultPage() {
+  return (
+    <Suspense fallback={<ResultLoader />}>
+      <AnalysisResultContent />
+    </Suspense>
   );
 }
