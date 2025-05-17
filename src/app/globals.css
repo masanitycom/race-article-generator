@@ -1,0 +1,102 @@
+body {
+  background-color: #f8f9fa;
+  font-family: 'Inter', sans-serif;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.btn-primary {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.btn-primary:hover {
+  background-color: #004494;
+  border-color: #004494;
+}
+
+.form-section {
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading-spinner {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* 印のスタイル */
+.mark-circle {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background-color: #dc3545;
+  color: white;
+  text-align: center;
+  line-height: 24px;
+  font-weight: bold;
+}
+
+.mark-triangle {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-bottom: 20px solid #fd7e14;
+  position: relative;
+}
+
+.mark-triangle span {
+  position: absolute;
+  top: 5px;
+  left: -5px;
+  color: white;
+  font-weight: bold;
+}
+
+.mark-star {
+  display: inline-block;
+  color: #ffc107;
+  font-size: 24px;
+}
+
+.mark-diamond {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background-color: #17a2b8;
+  transform: rotate(45deg);
+  position: relative;
+}
+
+.mark-diamond span {
+  position: absolute;
+  top: -2px;
+  left: 5px;
+  transform: rotate(-45deg);
+  color: white;
+  font-weight: bold;
+}
