@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Image from 'next/image';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function RegisterPage() {
   const [name, setName] = useState('');
@@ -13,8 +15,9 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const router = useRouter();
+  const { signUpWithEmail, signInWithGoogle, signInWithTwitter } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
@@ -28,58 +31,54 @@ export default function RegisterPage() {
     }
 
     try {
-      console.log('新規登録リクエスト送信開始');
+      await signUpWithEmail(email, password, name);
+      setSuccessMessage('登録が完了しました。自動返信メールをご確認ください。');
       
-      // 新規登録処理（next-authのcredentials providerを使用）
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      console.log('レスポンス受信:', response.status);
-      
-      // レスポンスのステータスコードを確認
-      if (!response.ok) {
-        // レスポンスがJSONでない場合のエラーハンドリング
-        const contentType = response.headers.get('content-type');
-        console.log('エラーレスポンスのContent-Type:', contentType);
-        
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json();
-          throw new Error(data.error || '登録に失敗しました');
-        } else {
-          const text = await response.text();
-          console.log('エラーレスポンスの内容:', text);
-          throw new Error(`登録に失敗しました (${response.status})`);
-        }
-      }
-
-      // 正常なレスポンスの処理
-      try {
-        const data = await response.json();
-        console.log('登録成功レスポンス:', data);
-        setSuccessMessage(data.message || '登録が完了しました。確認メールをご確認ください。');
-        
-        // 3秒後にログインページへリダイレクト
-        setTimeout(() => {
-          router.push('/login?registered=true');
-        }, 3000);
-      } catch (jsonError) {
-        console.log('JSONパースエラー:', jsonError);
-        // JSONパースエラーの場合でも成功として扱う
-        setSuccessMessage('登録が完了しました。確認メールをご確認ください。');
-        
-        // 3秒後にログインページへリダイレクト
-        setTimeout(() => {
-          router.push('/login?registered=true');
-        }, 3000);
-      }
+      // 3秒後にログインページへリダイレクト
+      setTimeout(() => {
+        router.push('/login?registered=true');
+      }, 3000);
     } catch (err: any) {
       console.error('登録エラー:', err);
-      setError(err.message || '登録中にエラーが発生しました');
+      if (err.code === 'auth/email-already-in-use') {
+        setError('このメールアドレスは既に登録されています');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('無効なメールアドレスです');
+      } else if (err.code === 'auth/weak-password') {
+        setError('パスワードが弱すぎます。8文字以上の英数字を入力してください');
+      } else {
+        setError(err.message || '登録中にエラーが発生しました');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await signInWithGoogle();
+      router.push('/analyze');
+    } catch (err: any) {
+      console.error('Googleサインアップエラー:', err);
+      setError('Googleでの登録に失敗しました');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTwitterSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await signInWithTwitter();
+      router.push('/analyze');
+    } catch (err: any) {
+      console.error('Twitterサインアップエラー:', err);
+      setError('Twitterでの登録に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -105,7 +104,7 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form className="auth-form" onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleEmailSignUp}>
           <div className="form-group">
             <label htmlFor="name" className="form-label">お名前</label>
             <input
@@ -172,6 +171,30 @@ export default function RegisterPage() {
             )}
           </button>
         </form>
+
+        <div className="social-login">
+          <p className="social-login-text">または</p>
+          <button
+            className="btn btn-social btn-google"
+            onClick={handleGoogleSignUp}
+            disabled={isLoading}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z"/>
+            </svg>
+            Googleで登録
+          </button>
+          <button
+            className="btn btn-social btn-twitter"
+            onClick={handleTwitterSignUp}
+            disabled={isLoading}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M22.46,6c-0.77,0.35-1.6,0.58-2.46,0.69c0.88-0.53,1.56-1.37,1.88-2.38c-0.83,0.5-1.75,0.85-2.72,1.05C18.37,4.5,17.26,4,16,4c-2.35,0-4.27,1.92-4.27,4.29c0,0.34,0.04,0.67,0.11,0.98C8.28,9.09,5.11,7.38,3,4.79c-0.37,0.63-0.58,1.37-0.58,2.15c0,1.49,0.75,2.81,1.91,3.56c-0.71,0-1.37-0.2-1.95-0.5c0,0.02,0,0.03,0,0.05c0,2.08,1.48,3.82,3.44,4.21c-0.36,0.1-0.74,0.15-1.13,0.15c-0.27,0-0.54-0.03-0.8-0.08c0.54,1.69,2.11,2.95,3.98,2.98c-1.46,1.16-3.31,1.84-5.33,1.84c-0.34,0-0.68-0.02-1.02-0.06C3.44,20.29,5.7,21,8.12,21C16,21,20.33,14.46,20.33,8.79c0-0.19,0-0.37-0.01-0.56C21.17,7.65,21.88,6.87,22.46,6z"/>
+            </svg>
+            Twitterで登録
+          </button>
+        </div>
 
         <div className="auth-footer">
           <p>

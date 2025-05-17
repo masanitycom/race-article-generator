@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://deepstride-racing-ai.vercel.app/sitemap.xml

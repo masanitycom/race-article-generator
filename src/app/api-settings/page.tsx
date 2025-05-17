@@ -3,227 +3,213 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
+import { useAuth } from '../../contexts/AuthContext';
+import { useApiKeys } from '../../hooks/useFirestore';
 
 export default function ApiSettingsPage() {
-  const [apiKey, setApiKey] = useState('');
-  const [maskedApiKey, setMaskedApiKey] = useState('');
+  const [name, setName] = useState('');
+  const [key, setKey] = useState('');
+  const [provider, setProvider] = useState('openai');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
   const [error, setError] = useState('');
-  const [testResult, setTestResult] = useState<{success: boolean, message: string} | null>(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  const { 
+    keys, 
+    loading: keysLoading, 
+    error: keysError, 
+    addApiKey, 
+    deleteApiKey 
+  } = useApiKeys();
 
-  // APIキー情報の取得
+  // 認証状態の確認
   useEffect(() => {
-    const fetchApiKey = async () => {
-      try {
-        const response = await fetch('/api/api-keys');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.masked_api_key) {
-            setMaskedApiKey(data.masked_api_key);
-          }
-        }
-      } catch (err) {
-        console.error('APIキー取得エラー:', err);
-      }
-    };
+    if (!authLoading && !user) {
+      router.push('/login?redirect=api-settings');
+    }
+  }, [user, authLoading, router]);
 
-    fetchApiKey();
-  }, []);
-
-  // APIキーの保存
-  const handleSaveApiKey = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    setIsSaved(false);
-    setTestResult(null);
+    setSuccessMessage('');
 
     try {
-      const response = await fetch('/api/api-keys', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ api_key: apiKey }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'APIキーの保存中にエラーが発生しました');
-        setIsLoading(false);
-        return;
-      }
-
-      setIsSaved(true);
-      setApiKey('');
-      if (data.masked_api_key) {
-        setMaskedApiKey(data.masked_api_key);
-      }
-    } catch (err) {
-      setError('サーバーとの通信中にエラーが発生しました');
+      await addApiKey(name, key, provider);
+      setSuccessMessage('APIキーが正常に追加されました');
+      setName('');
+      setKey('');
+    } catch (err: any) {
+      console.error('APIキー追加エラー:', err);
+      setError(err.message || 'APIキーの追加に失敗しました');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // APIキーのテスト
-  const handleTestApiKey = async () => {
+  const handleDelete = async (keyId: string) => {
+    if (!confirm('このAPIキーを削除してもよろしいですか？')) {
+      return;
+    }
+
     setIsLoading(true);
-    setTestResult(null);
     setError('');
+    setSuccessMessage('');
 
     try {
-      const response = await fetch('/api/api-keys/test', {
-        method: 'GET',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setTestResult({
-          success: false,
-          message: data.error || 'APIキーのテストに失敗しました',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      setTestResult({
-        success: true,
-        message: 'APIキーのテストに成功しました',
-      });
-    } catch (err) {
-      setTestResult({
-        success: false,
-        message: 'サーバーとの通信中にエラーが発生しました',
-      });
+      await deleteApiKey(keyId);
+      setSuccessMessage('APIキーが正常に削除されました');
+    } catch (err: any) {
+      console.error('APIキー削除エラー:', err);
+      setError(err.message || 'APIキーの削除に失敗しました');
     } finally {
       setIsLoading(false);
     }
   };
+
+  // 認証中またはキー読み込み中はローディング表示
+  if (authLoading || keysLoading) {
+    return (
+      <div className="page-content">
+        <div className="loading-container">
+          <div className="spinner large"></div>
+          <p>読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-content">
-      <div className="container py-4">
-        <h1 className="section-title">API設定</h1>
-        
-        <div className="analysis-container">
-          <h2 className="mb-4">OpenAI APIキー設定</h2>
-          <p className="mb-4">
-            AI自動分析機能を使用するには、OpenAI APIキーが必要です。
-            <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer" className="auth-link ms-2">
-              APIキーを取得する（OpenAIウェブサイト）
-            </a>
-          </p>
-          
-          {error && (
-            <div className="alert alert-danger mb-4" role="alert">
-              {error}
-            </div>
-          )}
-          
-          {isSaved && (
-            <div className="alert alert-success mb-4" role="alert">
-              APIキーが正常に保存されました
-            </div>
-          )}
-          
-          {testResult && (
-            <div className={`alert ${testResult.success ? 'alert-success' : 'alert-danger'} mb-4`} role="alert">
-              {testResult.message}
-            </div>
-          )}
-          
-          <div className="card mb-4">
-            <div className="card-body">
-              <h3 className="card-title">現在のAPIキー状態</h3>
-              <p className="card-text">
-                {maskedApiKey ? (
-                  <>APIキー: {maskedApiKey}</>
-                ) : (
-                  <>APIキーが設定されていません</>
-                )}
-              </p>
-              
-              {maskedApiKey && (
-                <button
-                  className="btn btn-outline"
-                  onClick={handleTestApiKey}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="spinner me-2"></span>
-                      テスト中...
-                    </>
-                  ) : (
-                    'APIキーをテスト'
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <form onSubmit={handleSaveApiKey}>
-            <div className="form-group">
-              <label htmlFor="api_key" className="form-label">
-                OpenAI APIキー
-              </label>
-              <input
-                type="password"
-                className="form-control"
-                id="api_key"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
-                autoComplete="off"
-              />
-              <div className="form-text">
-                APIキーは安全に暗号化して保存されます。
-              </div>
-            </div>
-            
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isLoading || !apiKey}
-            >
-              {isLoading ? (
-                <>
-                  <span className="spinner me-2"></span>
-                  保存中...
-                </>
-              ) : (
-                'APIキーを保存'
-              )}
-            </button>
-          </form>
+      <div className="settings-container">
+        <div className="settings-header">
+          <h1 className="settings-title">API設定</h1>
+          <p className="settings-subtitle">レース分析に使用するAPIキーを管理します</p>
         </div>
-        
-        <div className="analysis-container">
-          <h2 className="mb-3">APIキーについての注意事項</h2>
-          <div className="alert alert-warning">
-            <h5 className="alert-heading">重要</h5>
-            <p>
-              OpenAI APIは有料サービスです。APIキーを使用すると、使用量に応じて課金されます。
-              料金体系については、<a href="https://openai.com/pricing" target="_blank" rel="noopener noreferrer" className="auth-link">OpenAIの料金ページ</a>をご確認ください。
-            </p>
-            <hr />
-            <p className="mb-0">
-              テスト用のダミーAPIキー（例: sk-test...）では機能しません。有効なAPIキーを設定してください。
-            </p>
+
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
           </div>
-          
-          <h3 className="mt-4 mb-3">APIキーの取得方法</h3>
-          <ol>
-            <li className="mb-2">OpenAIアカウントを作成（または既存のアカウントでログイン）</li>
-            <li className="mb-2"><a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener noreferrer" className="auth-link">APIキーページ</a>にアクセス</li>
-            <li className="mb-2">「Create new secret key」ボタンをクリック</li>
-            <li className="mb-2">生成されたAPIキーをコピーして、上記フォームに貼り付け</li>
-          </ol>
+        )}
+
+        {keysError && (
+          <div className="alert alert-danger" role="alert">
+            {keysError}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="alert alert-success" role="alert">
+            {successMessage}
+          </div>
+        )}
+
+        <div className="card mb-4">
+          <div className="card-header">
+            <h2 className="card-title">APIキー追加</h2>
+          </div>
+          <div className="card-body">
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label htmlFor="name" className="form-label">名前</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="key" className="form-label">APIキー</label>
+                <input
+                  type="password"
+                  className="form-control"
+                  id="key"
+                  value={key}
+                  onChange={(e) => setKey(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="provider" className="form-label">プロバイダー</label>
+                <select
+                  className="form-control"
+                  id="provider"
+                  value={provider}
+                  onChange={(e) => setProvider(e.target.value)}
+                  required
+                >
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic</option>
+                  <option value="google">Google AI</option>
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className="spinner me-2"></span>
+                    追加中...
+                  </>
+                ) : (
+                  'APIキーを追加'
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-header">
+            <h2 className="card-title">登録済みAPIキー</h2>
+          </div>
+          <div className="card-body">
+            {keys.length === 0 ? (
+              <p className="text-muted">登録されているAPIキーはありません</p>
+            ) : (
+              <div className="api-keys-list">
+                {keys.map((apiKey) => (
+                  <div key={apiKey.id} className="api-key-item">
+                    <div className="api-key-info">
+                      <h3 className="api-key-name">{apiKey.name}</h3>
+                      <p className="api-key-provider">{apiKey.provider}</p>
+                      <p className="api-key-date">
+                        追加日: {new Date(apiKey.createdAt).toLocaleDateString('ja-JP')}
+                      </p>
+                    </div>
+                    <div className="api-key-actions">
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleDelete(apiKey.id)}
+                        disabled={isLoading}
+                      >
+                        削除
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="settings-footer">
+          <Link href="/analyze" className="btn btn-outline-primary">
+            分析ページに戻る
+          </Link>
         </div>
       </div>
     </div>
