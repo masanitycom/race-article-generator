@@ -11,12 +11,14 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+    setSuccessMessage('');
 
     // パスワード確認
     if (password !== confirmPassword) {
@@ -26,7 +28,7 @@ export default function RegisterPage() {
     }
 
     try {
-      // 新規登録処理（実際の実装はnext-authを使用）
+      // 新規登録処理
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -35,13 +37,36 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
+      // レスポンスのステータスコードを確認
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || '登録に失敗しました');
+        // レスポンスがJSONでない場合のエラーハンドリング
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          throw new Error(data.error || '登録に失敗しました');
+        } else {
+          throw new Error(`登録に失敗しました (${response.status})`);
+        }
       }
 
-      // 登録成功時はログインページへリダイレクト
-      router.push('/login?registered=true');
+      // 正常なレスポンスの処理
+      try {
+        const data = await response.json();
+        setSuccessMessage(data.message || '登録が完了しました。確認メールをご確認ください。');
+        
+        // 3秒後にログインページへリダイレクト
+        setTimeout(() => {
+          router.push('/login?registered=true');
+        }, 3000);
+      } catch (jsonError) {
+        // JSONパースエラーの場合でも成功として扱う
+        setSuccessMessage('登録が完了しました。確認メールをご確認ください。');
+        
+        // 3秒後にログインページへリダイレクト
+        setTimeout(() => {
+          router.push('/login?registered=true');
+        }, 3000);
+      }
     } catch (err: any) {
       setError(err.message || '登録中にエラーが発生しました');
     } finally {
@@ -60,6 +85,12 @@ export default function RegisterPage() {
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="alert alert-success" role="alert">
+            {successMessage}
           </div>
         )}
 
