@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { Inter, Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
+import Link from 'next/link';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+const notoSansJP = Noto_Sans_JP({ subsets: ['latin'], variable: '--font-noto', weight: ['300', '400', '500', '700'], display: 'swap' });
 
 export const metadata: Metadata = {
-  title: '競馬レース記事生成システム',
-  description: 'AIが自動的に競馬レースを分析し、予想記事を生成するシステム',
+  title: 'AI競馬予想システム | プロフェッショナルな競馬分析',
+  description: 'AIが自動的に競馬レースを分析し、プロフェッショナルな予想記事を生成するシステム',
 };
 
 export default function RootLayout({
@@ -16,32 +17,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body className={inter.className}>
-        <nav className="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-          <div className="container">
-            <a className="navbar-brand" href="/">AI競馬予想システム</a>
-            <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-              <span className="navbar-toggler-icon"></span>
-            </button>
-            <div className="collapse navbar-collapse" id="navbarNav">
-              <ul className="navbar-nav me-auto">
-                <li className="nav-item">
-                  <a className="nav-link" href="/dashboard">ダッシュボード</a>
-                </li>
-                <li className="nav-item">
-                  <a className="nav-link" href="/analyze">AI自動分析</a>
-                </li>
-                <li className="nav-item">
-                  <a className="nav-link" href="/api-settings">API設定</a>
-                </li>
-              </ul>
-            </div>
+    <html lang="ja" className={`${inter.variable} ${notoSansJP.variable}`}>
+      <body>
+        <nav className="navbar">
+          <div className="container navbar-container">
+            <Link href="/" className="navbar-brand">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M19 7v10c0 3-2 5-5 5H5"></path>
+                <path d="M5 2v10c0 3 2 5 5 5h5"></path>
+                <path d="M12 12h7"></path>
+                <path d="M12 16h7"></path>
+                <path d="M12 8h7"></path>
+              </svg>
+              AI競馬予想システム
+            </Link>
+            <ul className="navbar-nav">
+              <li className="nav-item">
+                <Link href="/" className="nav-link active">ホーム</Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/analyze" className="nav-link">AI自動分析</Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/api-settings" className="nav-link">API設定</Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/login" className="nav-link">ログイン</Link>
+              </li>
+              <li className="nav-item">
+                <Link href="/register" className="nav-link">新規登録</Link>
+              </li>
+            </ul>
           </div>
         </nav>
-        <div style={{ paddingTop: '60px' }}>
-          {children}
-        </div>
+        {children}
       </body>
     </html>
   );
