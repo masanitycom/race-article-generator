@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../lib/auth';
+import { auth } from '../../../lib/auth';
 import { kv } from '@vercel/kv';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -49,7 +48,7 @@ function decryptApiKey(encryptedApiKey: string, userId: string) {
 export async function GET() {
   try {
     // セッションの取得
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     
     if (!session || !session.user) {
       return NextResponse.json(
@@ -58,8 +57,17 @@ export async function GET() {
       );
     }
     
+    // ユーザーIDの確認
+    const userId = session.user.id;
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ユーザーIDが取得できません' },
+        { status: 500 }
+      );
+    }
+    
     // APIキーの取得
-    const apiKeys = await kv.get(`api_keys:${session.user.id}`) as any;
+    const apiKeys = await kv.get(`api_keys:${userId}`) as any;
     const apiKey = apiKeys?.api_key || '';
     
     return NextResponse.json({
@@ -77,11 +85,10 @@ export async function GET() {
 }
 
 // APIキー保存
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // セッションの取得
-    const session = await getServerSession(authOptions);
-    
+    // セッション確認
+    const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json(
         { error: '認証が必要です' },
@@ -89,8 +96,17 @@ export async function POST(req: NextRequest) {
       );
     }
     
+    // ユーザーIDの確認
+    const userId = session.user.id;
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ユーザーIDが取得できません' },
+        { status: 500 }
+      );
+    }
+    
     // リクエストボディの取得
-    const body = await req.json();
+    const body = await request.json();
     
     // 入力値の検証
     const result = apiKeySchema.safeParse(body);
@@ -104,9 +120,9 @@ export async function POST(req: NextRequest) {
     const { api_key } = result.data;
     
     // APIキーの暗号化と保存
-    const encryptedApiKey = encryptApiKey(api_key, session.user.id);
+    const encryptedApiKey = encryptApiKey(api_key, userId);
     
-    await kv.set(`api_keys:${session.user.id}`, {
+    await kv.set(`api_keys:${userId}`, {
       api_key: encryptedApiKey,
       updated_at: new Date().toISOString(),
     });

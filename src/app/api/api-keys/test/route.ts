@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../../lib/auth';
+import { auth } from '../../../../lib/auth';
 import { kv } from '@vercel/kv';
 import OpenAI from 'openai';
 import crypto from 'crypto';
@@ -19,11 +18,10 @@ function decryptApiKey(encryptedApiKey: string, userId: string) {
   }
 }
 
-export async function POST() {
+export async function GET() {
   try {
-    // セッションの取得
-    const session = await getServerSession(authOptions);
-    
+    // セッション確認
+    const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json(
         { error: '認証が必要です' },
@@ -31,8 +29,17 @@ export async function POST() {
       );
     }
     
+    // ユーザーIDの確認
+    const userId = session.user.id;
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'ユーザーIDが取得できません' },
+        { status: 500 }
+      );
+    }
+    
     // APIキーの取得
-    const apiKeys = await kv.get(`api_keys:${session.user.id}`) as any;
+    const apiKeys = await kv.get(`api_keys:${userId}`) as any;
     const encryptedApiKey = apiKeys?.api_key || '';
     
     if (!encryptedApiKey) {
@@ -43,7 +50,7 @@ export async function POST() {
     }
     
     // APIキーの復号化
-    const apiKey = decryptApiKey(encryptedApiKey, session.user.id);
+    const apiKey = decryptApiKey(encryptedApiKey, userId);
     
     if (!apiKey) {
       return NextResponse.json(
@@ -57,7 +64,7 @@ export async function POST() {
     const response = await client.models.list();
     
     // テスト成功
-    await kv.set(`api_keys:${session.user.id}`, {
+    await kv.set(`api_keys:${userId}`, {
       ...apiKeys,
       last_verified: new Date().toISOString(),
       status: 'active',

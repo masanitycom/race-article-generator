@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '../../../lib/auth';
+import { auth } from '../../../lib/auth';
 import { kv } from '@vercel/kv';
 import OpenAI from 'openai';
 import { z } from 'zod';
@@ -277,11 +276,10 @@ async function analyzeRace(raceName: string, apiKey: string) {
   }
 }
 
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    // セッションの取得
-    const session = await getServerSession(authOptions);
-    
+    // セッション確認
+    const session = await auth();
     if (!session || !session.user) {
       return NextResponse.json(
         { error: '認証が必要です' },
@@ -290,7 +288,7 @@ export async function POST(req: NextRequest) {
     }
     
     // リクエストボディの取得
-    const body = await req.json();
+    const body = await request.json();
     
     // 入力値の検証
     const result = analyzeSchema.safeParse(body);
@@ -317,11 +315,12 @@ export async function POST(req: NextRequest) {
     // レース分析の実行
     const analysisResult = await analyzeRace(race_name, apiKey);
     
-    if ('error' in analysisResult) {
+    if ('error' in analysisResult && analysisResult.error) {
       // APIキー関連のエラーを検出
-      if (analysisResult.error.includes('API key') || 
-          analysisResult.error.includes('401') || 
-          analysisResult.error.includes('invalid_api_key')) {
+      const errorMessage = String(analysisResult.error);
+      if (errorMessage.includes('API key') || 
+          errorMessage.includes('401') || 
+          errorMessage.includes('invalid_api_key')) {
         return NextResponse.json(
           { error: 'APIキーが無効です', type: 'api_key_error' },
           { status: 400 }
@@ -329,7 +328,7 @@ export async function POST(req: NextRequest) {
       }
       
       return NextResponse.json(
-        { error: analysisResult.error },
+        { error: errorMessage },
         { status: 500 }
       );
     }
