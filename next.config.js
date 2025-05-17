@@ -14,6 +14,14 @@ const nextConfig = {
       }
     ];
   },
+  // webpack設定を追加
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': require('path').resolve(__dirname, 'src'),
+    };
+    return config;
+  },
 };
 
 module.exports = nextConfig;
