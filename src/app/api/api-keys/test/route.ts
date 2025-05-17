@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { authOptions } from '../../../../lib/auth';
 import { kv } from '@vercel/kv';
 import OpenAI from 'openai';
 import crypto from 'crypto';
