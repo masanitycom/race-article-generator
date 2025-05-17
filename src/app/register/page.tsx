@@ -28,8 +28,10 @@ export default function RegisterPage() {
     }
 
     try {
-      // 新規登録処理
-      const response = await fetch('/api/auth/register', {
+      console.log('新規登録リクエスト送信開始');
+      
+      // 新規登録処理（next-authのcredentials providerを使用）
+      const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -37,14 +39,20 @@ export default function RegisterPage() {
         body: JSON.stringify({ name, email, password }),
       });
 
+      console.log('レスポンス受信:', response.status);
+      
       // レスポンスのステータスコードを確認
       if (!response.ok) {
         // レスポンスがJSONでない場合のエラーハンドリング
         const contentType = response.headers.get('content-type');
+        console.log('エラーレスポンスのContent-Type:', contentType);
+        
         if (contentType && contentType.includes('application/json')) {
           const data = await response.json();
           throw new Error(data.error || '登録に失敗しました');
         } else {
+          const text = await response.text();
+          console.log('エラーレスポンスの内容:', text);
           throw new Error(`登録に失敗しました (${response.status})`);
         }
       }
@@ -52,6 +60,7 @@ export default function RegisterPage() {
       // 正常なレスポンスの処理
       try {
         const data = await response.json();
+        console.log('登録成功レスポンス:', data);
         setSuccessMessage(data.message || '登録が完了しました。確認メールをご確認ください。');
         
         // 3秒後にログインページへリダイレクト
@@ -59,6 +68,7 @@ export default function RegisterPage() {
           router.push('/login?registered=true');
         }, 3000);
       } catch (jsonError) {
+        console.log('JSONパースエラー:', jsonError);
         // JSONパースエラーの場合でも成功として扱う
         setSuccessMessage('登録が完了しました。確認メールをご確認ください。');
         
@@ -68,6 +78,7 @@ export default function RegisterPage() {
         }, 3000);
       }
     } catch (err: any) {
+      console.error('登録エラー:', err);
       setError(err.message || '登録中にエラーが発生しました');
     } finally {
       setIsLoading(false);
